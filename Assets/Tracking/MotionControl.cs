@@ -17,15 +17,19 @@ public class Motion {
 		loop = true;
 	}
 
-	public void Animate(GameObject obj) {
+	public void Animate(Vector3 pos, GameObject obj) {
 		frame = (frame + 1) % steps.Count;
-		obj.transform.position = steps[frame].pos;
+		obj.transform.position = pos + steps[frame].pos;
 		obj.transform.rotation = steps[frame].rot;
 	}
 }
 public class Orientation {
 	public Vector3 pos;
 	public Quaternion rot;
+	public Orientation() {
+		pos = new Vector3();
+		rot = Quaternion.identity;
+	}
 	public Orientation(Transform transform) {
 		pos = transform.position;
 		rot = transform.rotation;
@@ -34,9 +38,9 @@ public class Orientation {
 	
 // Monobehavior
 public class MotionControl : MonoBehaviour {
-	public int frame;
-	public bool recording;
+	private int frame;	
 	public Motion record, animation;
+	public Vector3 startingPos;
 
 	void Start() {
 		record = null;
@@ -45,8 +49,9 @@ public class MotionControl : MonoBehaviour {
 	}
 
 	void Update() {
+
 		if (animation != null) {
-			animation.Animate(gameObject);
+			animation.Animate(startingPos, gameObject);
 		}
 	}
 }
@@ -64,6 +69,8 @@ public class MotionEditor : Editor {
 	}
 
 	public override void OnInspectorGUI() {
+
+		DrawDefaultInspector ();
 
 		foreach (KeyValuePair <string, Motion> entry in motions) {
 			EditorGUILayout.BeginHorizontal();
@@ -89,6 +96,7 @@ public class MotionBuilder : EditorWindow {
 	Motion motion;
 	string name;
 	bool recording;
+	Transform startingTrans;
 
 	void OnEnable() {
 		motion = new Motion();
@@ -99,7 +107,10 @@ public class MotionBuilder : EditorWindow {
 	void Update() {
 		// Record the frames of motion
 		if (recording) {
-			motion.steps.Add(new Orientation(editor.motionControl.gameObject.transform));
+			Orientation o = new Orientation();
+			o.pos = (editor.motionControl.startingPos - editor.motionControl.gameObject.transform.position);
+			o.rot = editor.motionControl.gameObject.transform.rotation;
+			motion.steps.Add(o);
 		}
 	}
 
@@ -114,6 +125,7 @@ public class MotionBuilder : EditorWindow {
 			// Begin Recording
 			if (GUI.Button(new Rect(5, 28, 50, 18), "Record")) {
 				motion = new Motion();
+				editor.motionControl.startingPos = editor.motionControl.gameObject.transform.position;
 				recording = true;
 			}
 			// Allow Submission of a Recording
