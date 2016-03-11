@@ -4,57 +4,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-
-// Data Classes
-public class Motion {
-	public List<Orientation> steps;
-	private int frame;
-	public bool loop;
-
-	public Motion() {
-		steps = new List<Orientation>();
-		frame = 0;
-		loop = true;
-	}
-
-	public void Animate(Vector3 pos, GameObject obj) {
-		frame = (frame + 1) % steps.Count;
-		obj.transform.position = pos + steps[frame].pos;
-		obj.transform.rotation = steps[frame].rot;
-	}
-}
-public class Orientation {
-	public Vector3 pos;
-	public Quaternion rot;
-	public Orientation() {
-		pos = new Vector3();
-		rot = Quaternion.identity;
-	}
-	public Orientation(Transform transform) {
-		pos = transform.position;
-		rot = transform.rotation;
-	}
-}
 	
-// Monobehavior
-public class MotionControl : MonoBehaviour {
-	private int frame;	
-	public Motion record, animation;
-	public Vector3 startingPos;
 
-	void Start() {
-		record = null;
-		animation = null;
-		frame = 0;
-	}
-
-	void Update() {
-
-		if (animation != null) {
-			animation.Animate(startingPos, gameObject);
-		}
-	}
-}
 
 // Editor
 [CustomEditor(typeof(MotionControl))]
@@ -93,13 +44,13 @@ public class MotionEditor : Editor {
 public class MotionBuilder : EditorWindow {
 	
 	MotionEditor editor;
-	Motion motion;
+	List<Orientation> record; 
+	Motion recorded_motion;
 	string name;
 	bool recording;
 	Transform startingTrans;
 
 	void OnEnable() {
-		motion = new Motion();
 		recording = false;
 		maxSize = new Vector2(225, 50);
 	}
@@ -107,10 +58,10 @@ public class MotionBuilder : EditorWindow {
 	void Update() {
 		// Record the frames of motion
 		if (recording) {
-			Orientation o = new Orientation();
-			o.pos = (editor.motionControl.startingPos - editor.motionControl.gameObject.transform.position);
-			o.rot = editor.motionControl.gameObject.transform.rotation;
-			motion.steps.Add(o);
+			Orientation frame = new Orientation();
+			frame.pos = (editor.motionControl.startingPos - editor.motionControl.gameObject.transform.position);
+			frame.rot = editor.motionControl.gameObject.transform.rotation;
+			record.Add(frame);
 		}
 	}
 
@@ -124,14 +75,14 @@ public class MotionBuilder : EditorWindow {
 		if (!recording) {
 			// Begin Recording
 			if (GUI.Button(new Rect(5, 28, 50, 18), "Record")) {
-				motion = new Motion();
+				record = new List<Orientation>();
 				editor.motionControl.startingPos = editor.motionControl.gameObject.transform.position;
 				recording = true;
 			}
 			// Allow Submission of a Recording
-			if (motion.steps.Count > 0) {
+			if (!recording && record.Count > 0) {
 				if (GUI.Button(new Rect(60, 28, 50, 18), "Submit")) {
-					editor.motions.Add(name, motion);
+					editor.motions.Add(name, recorded_motion);
 					editor.motionControl.animation = null;
 					this.Close();
 				}
@@ -141,7 +92,8 @@ public class MotionBuilder : EditorWindow {
 			// End Recording
 			if (GUI.Button(new Rect(5, 28, 50, 18), "Stop")) {
 				recording = false;
-				editor.motionControl.animation = motion;
+				recorded_motion = new Motion(record);
+				recorded_motion.FixedAnimate(editor.motionControl);
 			}
 		}
 		// Cancel Motion Creation
