@@ -101,10 +101,10 @@ public class Tracker_Obj {
 [ExecuteInEditMode]
 public class Tracker : MonoBehaviour {
 
-	static UdpClient client;
-	static IPEndPoint ep;
-	static public Dictionary<string, Tracker_Obj> objs;
-	static public List<Tracker_Obj> serialized_objs;
+	UdpClient client;
+	IPEndPoint ep;
+	public Dictionary<string, Tracker_Obj> objs;
+	public List<Tracker_Obj> serialized_objs;
 
 	void Start() {
 		Debug.Log ("Initializing Client");
@@ -123,25 +123,23 @@ public class Tracker : MonoBehaviour {
 		client.Connect(ep);
 
 		byte[] msg = System.Text.Encoding.UTF8.GetBytes("ADD ME");
-		client.Send(msg, msg.Length);	
+		client.Send(msg, msg.Length);
 
 		#if UNITY_EDITOR
-		EditorApplication.update += Update;
+			EditorApplication.update += Update;
 		#endif
 	}
 
 	void OnDestroy() {
 		#if UNITY_EDITOR
-		EditorApplication.update -= Update;
+			EditorApplication.update -= Update;
 		#endif
 	}
 
 	void Update() {
+
 		try {
 			if (client.Available > 0) {	
-
-				Debug.Log("recv");
-
 				string raw_msg = System.Text.Encoding.ASCII.GetString(client.Receive(ref ep));
 				var msg = JSON.Parse (raw_msg);
 				string code = msg["code"];
