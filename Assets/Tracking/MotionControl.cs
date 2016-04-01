@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEditor;
 using System;
+using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using SimpleJSON;
@@ -88,7 +89,7 @@ public class MotionBuilder : EditorWindow {
 	List<Orientation> record; 
 	string name;
 	bool recording;
-	Transform startingTrans;
+	Orientation startingOrientation;
 
 	void OnEnable() {
 		recording = false;
@@ -105,8 +106,11 @@ public class MotionBuilder : EditorWindow {
 		// Record the frames of motion
 		if (recording) {
 			Orientation frame = new Orientation();
-			frame.pos = startingTrans.position - editor.motionControl.gameObject.transform.position;
-			frame.rot = Quaternion.FromToRotation(startingTrans.forward, editor.motionControl.gameObject.transform.forward);
+			frame.pos = startingOrientation.pos - editor.motionControl.gameObject.transform.position;
+			Debug.Log(startingOrientation.pos);
+			Debug.Log(editor.motionControl.gameObject.transform.position);
+			Debug.Log(frame.pos);
+			frame.rot = Quaternion.FromToRotation(startingOrientation.rot * Vector3.forward, editor.motionControl.gameObject.transform.forward);
 			record.Add(frame);
 		}
 	}
@@ -121,16 +125,40 @@ public class MotionBuilder : EditorWindow {
 			// Begin Recording
 			if (GUI.Button(new Rect(5, 28, 50, 18), "Record")) {
 				record = new List<Orientation>();
-				startingTrans = editor.motionControl.gameObject.transform;
+				startingOrientation = new Orientation(editor.motionControl.gameObject.transform);
+				Debug.Log("Set");
 				recording = true;
 			}
 			// Allow Submission of a Recording
 			if (!recording && record != null && record.Count > 0) {
 				if (GUI.Button(new Rect(60, 28, 50, 18), "Submit")) {
 					// http://answers.unity3d.com/questions/753058/get-a-json-string-from-a-simplejson-node.html
-					<< syntax error >>
-					JSONNode motion = new JSONNode();
-					editor.motions.Add(name, record);
+					JSONClass JSON_root = new JSONClass();
+					JSONArray JSON_record = new JSONArray();
+					JSON_root.Add("name", new JSONData(name));
+					JSON_root.Add("record", JSON_record);
+
+					for (int i = 0; i < record.Count; i++) {
+						JSONArray JSON_orientation = new JSONArray();
+						JSON_orientation.Add( new JSONData(record[i].pos.x) );
+						JSON_orientation.Add( new JSONData(record[i].pos.y) );
+						JSON_orientation.Add( new JSONData(record[i].pos.z) );
+						JSON_orientation.Add( new JSONData(record[i].rot.x) );
+						JSON_orientation.Add( new JSONData(record[i].rot.y) );
+						JSON_orientation.Add( new JSONData(record[i].rot.z) );
+						JSON_record.Add( JSON_orientation );
+					}
+
+					string path = Application.dataPath + "/Resources/" + name + ".json";
+					if (!File.Exists(path)) {
+						File.WriteAllText(path, JSON_root.ToString());
+						Debug.Log("write");
+					}
+					else {
+						Debug.Log("No Write");
+					}
+						
+					//editor.motions.Add(name, record);
 					this.Close();
 				}
 			}
