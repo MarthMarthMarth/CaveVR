@@ -22,18 +22,36 @@ public class Orientation {
 		rot = transform.rotation;
 	}
 }
+
+[System.Serializable]
+public class Motion {
+	public string name;
+	public List<Orientation> orientations;
+
+	public Motion (string _name, List<Orientation> _orientations) {
+		name = _name;
+		orientations = _orientations;
+	}
+}
 	
 public class MotionControl : MonoBehaviour {
 
 	private int frame;
 	private bool loop;
-	private List<Orientation> motion;
+	private List<List<Orientation>> motions;
 	private Orientation starting;
+
+	public void Start() {
+		string path = Application.dataPath + "/Resources";
+		//string[] filenames = Directory.GetFiles("", "*.path.json");
+		//for (int i = 0; i < filenames.Length; i++)
+		//	Debug.Log(filenames[i]);
+	}
 
 	public IEnumerator Move(List<Orientation> _motion, bool _loop = false) {
 		frame = 0;
 		loop = _loop;
-		motion = _motion;
+		/*motion = _motion;
 		starting = new Orientation(gameObject.transform);
 
 		while (motion != null) {
@@ -42,37 +60,37 @@ public class MotionControl : MonoBehaviour {
 
 			frame += 1 % motion.Count;
 			if (frame == 0 && !loop)
-				motion = null;
+				motion = null;*/
 			yield return null;
-		}
+		//}
 	}
 }
-
 
 // Editor
 [CustomEditor(typeof(MotionControl))]
 public class MotionEditor : Editor {
 
-	public Dictionary<String, List<Orientation>> motions;
-	public MotionControl motionControl; 
+	public MotionControl motionControl;
+	public _LevelData levelData;
+	public string test;
 
 	void OnEnable() {
-		motions = new Dictionary<String, List<Orientation>>();
+		levelData = (_LevelData)Resources.Load("_LevelData"); 
 		motionControl = (MotionControl)target;
 	}
 
 	public override void OnInspectorGUI() {
-
+		 
 		DrawDefaultInspector ();
 
-		foreach (KeyValuePair <string, List<Orientation>> entry in motions) {
+		/*foreach (KeyValuePair <string, List<Orientation>> entry in motions) {
 			EditorGUILayout.BeginHorizontal();
 			GUILayout.Label(entry.Key);
 			if (GUILayout.Button("Play", GUILayout.Width(50))) {
 				motionControl.Move(entry.Value);
 			}
 			EditorGUILayout.EndHorizontal();
-		}
+		}*/
 
 		EditorGUILayout.Space();
 
@@ -86,6 +104,7 @@ public class MotionEditor : Editor {
 public class MotionBuilder : EditorWindow {
 	
 	MotionEditor editor;
+	_LevelData levelData;
 	List<Orientation> record; 
 	string name;
 	bool recording;
@@ -94,6 +113,11 @@ public class MotionBuilder : EditorWindow {
 	void OnEnable() {
 		recording = false;
 		maxSize = new Vector2(225, 50);
+		levelData = (_LevelData)Resources.Load("_LevelData");
+		Debug.Log(levelData.Motions().Count);
+		for (int i = 0; i < levelData.Motions().Count; i++)
+			Debug.Log(levelData.Motions()[i].name);
+		//levelData.Initialize();
 	}
 
 	void Update() {
@@ -107,9 +131,6 @@ public class MotionBuilder : EditorWindow {
 		if (recording) {
 			Orientation frame = new Orientation();
 			frame.pos = startingOrientation.pos - editor.motionControl.gameObject.transform.position;
-			Debug.Log(startingOrientation.pos);
-			Debug.Log(editor.motionControl.gameObject.transform.position);
-			Debug.Log(frame.pos);
 			frame.rot = Quaternion.FromToRotation(startingOrientation.rot * Vector3.forward, editor.motionControl.gameObject.transform.forward);
 			record.Add(frame);
 		}
@@ -126,14 +147,14 @@ public class MotionBuilder : EditorWindow {
 			if (GUI.Button(new Rect(5, 28, 50, 18), "Record")) {
 				record = new List<Orientation>();
 				startingOrientation = new Orientation(editor.motionControl.gameObject.transform);
-				Debug.Log("Set");
 				recording = true;
 			}
 			// Allow Submission of a Recording
 			if (!recording && record != null && record.Count > 0) {
 				if (GUI.Button(new Rect(60, 28, 50, 18), "Submit")) {
+					
 					// http://answers.unity3d.com/questions/753058/get-a-json-string-from-a-simplejson-node.html
-					JSONClass JSON_root = new JSONClass();
+					/*JSONClass JSON_root = new JSONClass();
 					JSONArray JSON_record = new JSONArray();
 					JSON_root.Add("name", new JSONData(name));
 					JSON_root.Add("record", JSON_record);
@@ -147,18 +168,20 @@ public class MotionBuilder : EditorWindow {
 						JSON_orientation.Add( new JSONData(record[i].rot.y) );
 						JSON_orientation.Add( new JSONData(record[i].rot.z) );
 						JSON_record.Add( JSON_orientation );
-					}
+					}*/
 
-					string path = Application.dataPath + "/Resources/" + name + ".json";
+					/*string path = Application.dataPath + "/Resources/" + name + "path.json";
 					if (!File.Exists(path)) {
 						File.WriteAllText(path, JSON_root.ToString());
 						Debug.Log("write");
 					}
 					else {
 						Debug.Log("No Write");
-					}
-						
-					//editor.motions.Add(name, record);
+					}*/
+				
+					levelData.AddMotion(new Motion(name, record));
+					//levelData.Test();
+					//EditorUtility.SetDirty(editor.motionControl);
 					this.Close();
 				}
 			}
