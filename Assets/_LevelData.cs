@@ -3,7 +3,9 @@ using UnityEditor;
 using System.Collections;
 using System.Collections.Generic;
 
+[System.Serializable]
 public class _LevelData : ScriptableObject {
+	[SerializeField]
 	List<Motion> motions;
 
 	[MenuItem("Assets/Create/_LevelData")]
@@ -27,3 +29,4 @@ public class _LevelData : ScriptableObject {
 		return motions;
 	}
 }
+

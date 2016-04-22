@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using SimpleJSON;
 
+[System.Serializable]
 public class Orientation {
 	public Vector3 pos;
 	public Quaternion rot;
@@ -75,7 +76,8 @@ public class MotionEditor : Editor {
 	public string test;
 
 	void OnEnable() {
-		levelData = (_LevelData)Resources.Load("_LevelData"); 
+		string path = "Assets/Resources/_LevelData.asset";
+		levelData = (_LevelData)AssetDatabase.LoadAssetAtPath(path, typeof(_LevelData)); 
 		motionControl = (MotionControl)target;
 	}
 
@@ -93,6 +95,15 @@ public class MotionEditor : Editor {
 		}*/
 
 		EditorGUILayout.Space();
+
+		for (int i = 0; i < levelData.Motions().Count; i++) {
+			GUILayout.BeginHorizontal();
+			GUILayout.Label(levelData.Motions()[i].name, GUILayout.Width(50));
+			if(GUILayout.Button("Play", GUILayout.Width(50))) {
+				Debug.Log(levelData.Motions()[i].orientations);
+			}
+			GUILayout.EndHorizontal();
+		}
 
 		if(GUILayout.Button("New", GUILayout.Width(50))) {
 			MotionBuilder.Show(this);
@@ -114,10 +125,10 @@ public class MotionBuilder : EditorWindow {
 		recording = false;
 		maxSize = new Vector2(225, 50);
 		levelData = (_LevelData)Resources.Load("_LevelData");
-		Debug.Log(levelData.Motions().Count);
-		for (int i = 0; i < levelData.Motions().Count; i++)
-			Debug.Log(levelData.Motions()[i].name);
-		//levelData.Initialize();
+		levelData.Initialize();
+		//Debug.Log(levelData.Motions().Count);
+		//for (int i = 0; i < levelData.Motions().Count; i++)
+		//	Debug.Log(levelData.Motions()[i].name);
 	}
 
 	void Update() {
@@ -169,7 +180,6 @@ public class MotionBuilder : EditorWindow {
 						JSON_orientation.Add( new JSONData(record[i].rot.z) );
 						JSON_record.Add( JSON_orientation );
 					}*/
-
 					/*string path = Application.dataPath + "/Resources/" + name + "path.json";
 					if (!File.Exists(path)) {
 						File.WriteAllText(path, JSON_root.ToString());
@@ -178,10 +188,7 @@ public class MotionBuilder : EditorWindow {
 					else {
 						Debug.Log("No Write");
 					}*/
-				
 					levelData.AddMotion(new Motion(name, record));
-					//levelData.Test();
-					//EditorUtility.SetDirty(editor.motionControl);
 					this.Close();
 				}
 			}
