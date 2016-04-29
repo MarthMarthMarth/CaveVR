@@ -7,6 +7,8 @@ using System.Collections.Generic;
 public class _LevelData : ScriptableObject {
 	[SerializeField]
 	List<Motion> motions;
+	[SerializeField]
+	public int active_index;
 
 	[MenuItem("Assets/Create/_LevelData")]
 	public static void CreateAsset() {
@@ -14,8 +16,10 @@ public class _LevelData : ScriptableObject {
 	}
 
 	public void Initialize() {
-		if (motions == null)
+		active_index = -1;
+		if (motions == null) {
 			motions = new List<Motion>();
+		}
 	}
 
 	public void AddMotion(Motion _motion) {

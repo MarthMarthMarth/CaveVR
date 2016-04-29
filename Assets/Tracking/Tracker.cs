@@ -169,7 +169,7 @@ public class Tracker : MonoBehaviour {
 			}
 		}
 		catch {
-			Debug.Log ("Error in message handling");
+			//Debug.Log ("Error in message handling");
 		}
 	}
 }

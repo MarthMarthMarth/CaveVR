@@ -28,43 +28,71 @@ public class Orientation {
 public class Motion {
 	public string name;
 	public List<Orientation> orientations;
+	public bool loop;
+	public bool reset;
+
+	public Motion() {
+		loop = reset = true;
+		name = "";
+		orientations = new List<Orientation>();
+	}
+
+	public Motion(string _name) {
+		loop = reset = true;
+		name = _name;
+		orientations = new List<Orientation>();
+	}
 
 	public Motion (string _name, List<Orientation> _orientations) {
+		loop = reset = true;
 		name = _name;
 		orientations = _orientations;
 	}
 }
-	
+
+[ExecuteInEditMode]
 public class MotionControl : MonoBehaviour {
 
 	private int frame;
-	private bool loop;
-	private List<List<Orientation>> motions;
+	private Motion motion;
 	private Orientation starting;
 
 	public void Start() {
-		string path = Application.dataPath + "/Resources";
-		//string[] filenames = Directory.GetFiles("", "*.path.json");
-		//for (int i = 0; i < filenames.Length; i++)
-		//	Debug.Log(filenames[i]);
-	}
-
-	public IEnumerator Move(List<Orientation> _motion, bool _loop = false) {
 		frame = 0;
-		loop = _loop;
-		/*motion = _motion;
-		starting = new Orientation(gameObject.transform);
-
-		while (motion != null) {
-			gameObject.transform.position = motion[frame].pos;
-			gameObject.transform.rotation = motion[frame].rot;
-
-			frame += 1 % motion.Count;
-			if (frame == 0 && !loop)
-				motion = null;*/
-			yield return null;
-		//}
+		string path = Application.dataPath + "/Resources";
+		#if UNITY_EDITOR
+			EditorApplication.update += Update;
+		#endif
 	}
+
+	void OnDestroy() {
+		#if UNITY_EDITOR
+		EditorApplication.update -= Update;
+		#endif
+	}
+
+	public void Update() {
+		if (motion != null) {
+			gameObject.transform.position = starting.pos - motion.orientations[frame].pos;
+			gameObject.transform.rotation = starting.rot * motion.orientations[frame].rot;
+
+			frame += 1;
+			frame %= motion.orientations.Count;
+			if (frame == 0 && !motion.loop)
+				Stop();
+		}
+	}
+
+	public void Move(Motion _motion) {
+		frame = 0;
+		motion = _motion;
+		starting = new Orientation(gameObject.transform);
+	}
+
+	public void Stop() {
+		motion = null;
+	}
+			
 }
 
 // Editor
@@ -74,35 +102,59 @@ public class MotionEditor : Editor {
 	public MotionControl motionControl;
 	public _LevelData levelData;
 	public string test;
+	public int active_index;
+	public bool loop;
+	public bool reset;
 
 	void OnEnable() {
 		string path = "Assets/Resources/_LevelData.asset";
-		levelData = (_LevelData)AssetDatabase.LoadAssetAtPath(path, typeof(_LevelData)); 
+		levelData = (_LevelData)AssetDatabase.LoadAssetAtPath(path, typeof(_LevelData));
+		levelData.Initialize();
 		motionControl = (MotionControl)target;
 	}
 
 	public override void OnInspectorGUI() {
 		 
 		DrawDefaultInspector ();
-
-		/*foreach (KeyValuePair <string, List<Orientation>> entry in motions) {
-			EditorGUILayout.BeginHorizontal();
-			GUILayout.Label(entry.Key);
-			if (GUILayout.Button("Play", GUILayout.Width(50))) {
-				motionControl.Move(entry.Value);
-			}
-			EditorGUILayout.EndHorizontal();
-		}*/
-
 		EditorGUILayout.Space();
 
 		for (int i = 0; i < levelData.Motions().Count; i++) {
+
 			GUILayout.BeginHorizontal();
-			GUILayout.Label(levelData.Motions()[i].name, GUILayout.Width(50));
-			if(GUILayout.Button("Play", GUILayout.Width(50))) {
-				Debug.Log(levelData.Motions()[i].orientations);
+			EditorGUILayout.LabelField(levelData.Motions()[i].name, EditorStyles.boldLabel);
+			GUILayout.EndHorizontal();
+
+			GUILayout.BeginHorizontal();
+			EditorGUILayout.LabelField("Length: " + levelData.Motions()[i].orientations.Count + " frames");
+			GUILayout.EndHorizontal();
+
+			GUILayout.BeginHorizontal();
+			levelData.Motions()[i].loop = EditorGUILayout.ToggleLeft("  Loop", levelData.Motions()[i].loop);
+			//reset = EditorGUILayout.ToggleLeft("  Reset", reset);
+			GUILayout.EndHorizontal();
+
+			GUILayout.BeginHorizontal();
+
+			if (levelData.active_index != i) {
+				if(GUILayout.Button("Play", GUILayout.Width(50))) {
+					motionControl.Move(levelData.Motions()[i]);
+					levelData.active_index = i;
+				}
+			}
+			else {
+				if(GUILayout.Button("Stop", GUILayout.Width(50))) {
+					motionControl.Stop();
+					levelData.active_index = -1;
+				}
+			}
+			if(GUILayout.Button("Trim", GUILayout.Width(50))) {
+				MotionTrimmer.Show(this);
+			}
+			if(GUILayout.Button("Delete", GUILayout.Width(50))) {
+				levelData.Motions().RemoveAt(i);
 			}
 			GUILayout.EndHorizontal();
+			GUILayout.Space(15);
 		}
 
 		if(GUILayout.Button("New", GUILayout.Width(50))) {
@@ -116,34 +168,32 @@ public class MotionBuilder : EditorWindow {
 	
 	MotionEditor editor;
 	_LevelData levelData;
-	List<Orientation> record; 
-	string name;
-	bool recording;
+
 	Orientation startingOrientation;
+	Motion motion; 
+	string name_field;
+	bool isRecording;
 
 	void OnEnable() {
-		recording = false;
+		isRecording = false;
 		maxSize = new Vector2(225, 50);
 		levelData = (_LevelData)Resources.Load("_LevelData");
 		levelData.Initialize();
-		//Debug.Log(levelData.Motions().Count);
-		//for (int i = 0; i < levelData.Motions().Count; i++)
-		//	Debug.Log(levelData.Motions()[i].name);
 	}
 
 	void Update() {
 
-		if (!EditorApplication.isPlaying) {
+		/*(if (!EditorApplication.isPlaying) {
 			Debug.Log("running");
 			Close();
-		}
+		}*/
 
 		// Record the frames of motion
-		if (recording) {
+		if (isRecording) {
 			Orientation frame = new Orientation();
 			frame.pos = startingOrientation.pos - editor.motionControl.gameObject.transform.position;
 			frame.rot = Quaternion.FromToRotation(startingOrientation.rot * Vector3.forward, editor.motionControl.gameObject.transform.forward);
-			record.Add(frame);
+			motion.orientations.Add(frame);
 		}
 	}
 
@@ -151,57 +201,35 @@ public class MotionBuilder : EditorWindow {
 		GUI.Label(new Rect(5, 4, 80, 18), "Enter a name:");
 
 		// Assign name from text field
-		name = EditorGUI.TextField(new Rect(85, 4, 125, 15), name);
+		name_field = EditorGUI.TextField(new Rect(85, 4, 125, 15), name_field);
 	
-		if (!recording) {
-			// Begin Recording
+		if (!isRecording) {
+			// Begin isRecording
 			if (GUI.Button(new Rect(5, 28, 50, 18), "Record")) {
-				record = new List<Orientation>();
+				motion = new Motion();
 				startingOrientation = new Orientation(editor.motionControl.gameObject.transform);
-				recording = true;
+				isRecording = true;
 			}
-			// Allow Submission of a Recording
-			if (!recording && record != null && record.Count > 0) {
+			// Allow Submission of a isRecording
+			if (!isRecording && motion != null && motion.orientations.Count > 0) {
 				if (GUI.Button(new Rect(60, 28, 50, 18), "Submit")) {
-					
-					// http://answers.unity3d.com/questions/753058/get-a-json-string-from-a-simplejson-node.html
-					/*JSONClass JSON_root = new JSONClass();
-					JSONArray JSON_record = new JSONArray();
-					JSON_root.Add("name", new JSONData(name));
-					JSON_root.Add("record", JSON_record);
-
-					for (int i = 0; i < record.Count; i++) {
-						JSONArray JSON_orientation = new JSONArray();
-						JSON_orientation.Add( new JSONData(record[i].pos.x) );
-						JSON_orientation.Add( new JSONData(record[i].pos.y) );
-						JSON_orientation.Add( new JSONData(record[i].pos.z) );
-						JSON_orientation.Add( new JSONData(record[i].rot.x) );
-						JSON_orientation.Add( new JSONData(record[i].rot.y) );
-						JSON_orientation.Add( new JSONData(record[i].rot.z) );
-						JSON_record.Add( JSON_orientation );
-					}*/
-					/*string path = Application.dataPath + "/Resources/" + name + "path.json";
-					if (!File.Exists(path)) {
-						File.WriteAllText(path, JSON_root.ToString());
-						Debug.Log("write");
-					}
-					else {
-						Debug.Log("No Write");
-					}*/
-					levelData.AddMotion(new Motion(name, record));
+					motion.name = name_field;
+					levelData.AddMotion(motion);
+					editor.motionControl.Stop();
 					this.Close();
 				}
 			}
 		}
 		else {
-			// End Recording
+			// End isRecording
 			if (GUI.Button(new Rect(5, 28, 50, 18), "Stop")) {
-				recording = false;
-				editor.motionControl.Move(record);
+				isRecording = false;
+				editor.motionControl.Move(motion);
 			}
 		}
 		// Cancel Motion Creation
 		if (GUI.Button(new Rect(170, 28, 50, 18), "Cancel")) {
+			editor.motionControl.Stop();
 			this.Close();
 		}
 	}
@@ -212,3 +240,77 @@ public class MotionBuilder : EditorWindow {
 	}
 }
 
+// Motion Trimmer Window
+public class MotionTrimmer : EditorWindow {
+
+	/*MotionEditor editor;
+	_LevelData levelData;
+
+	Orientation startingOrientation;
+	Motion motion; 
+	string name_field;
+	bool isRecording;
+
+	void OnEnable() {
+		isRecording = false;
+		maxSize = new Vector2(225, 50);
+		levelData = (_LevelData)Resources.Load("_LevelData");
+		levelData.Initialize();
+	}
+
+	void Update() {
+
+		if (!EditorApplication.isPlaying) {
+			Debug.Log("running");
+			Close();
+		}
+
+		// Record the frames of motion
+		if (isRecording) {
+			Orientation frame = new Orientation();
+			frame.pos = startingOrientation.pos - editor.motionControl.gameObject.transform.position;
+			frame.rot = Quaternion.FromToRotation(startingOrientation.rot * Vector3.forward, editor.motionControl.gameObject.transform.forward);
+			motion.orientations.Add(frame);
+		}
+	}
+
+	void OnGUI() {
+		GUI.Label(new Rect(5, 4, 80, 18), "Starting Frame:");
+		name_field = EditorGUI.TextField(new Rect(85, 4, 125, 15), name_field);
+
+		if (!isRecording) {
+			// Begin isRecording
+			if (GUI.Button(new Rect(5, 28, 50, 18), "Record")) {
+				motion = new Motion();
+				startingOrientation = new Orientation(editor.motionControl.gameObject.transform);
+				isRecording = true;
+			}
+			// Allow Submission of a isRecording
+			if (!isRecording && motion != null && motion.orientations.Count > 0) {
+				if (GUI.Button(new Rect(60, 28, 50, 18), "Submit")) {
+					motion.name = name_field;
+					levelData.AddMotion(motion);
+					editor.motionControl.Stop();
+					this.Close();
+				}
+			}
+		}
+		else {
+			// End isRecording
+			if (GUI.Button(new Rect(5, 28, 50, 18), "Stop")) {
+				isRecording = false;
+				editor.motionControl.Move(motion);
+			}
+		}
+		// Cancel Motion Creation
+		if (GUI.Button(new Rect(170, 28, 50, 18), "Cancel")) {
+			editor.motionControl.Stop();
+			this.Close();
+		}
+	}*/
+
+	public static void Show(MotionEditor _editor) {
+		MotionBuilder window = (MotionBuilder)EditorWindow.GetWindow(typeof(MotionBuilder));
+		//window.editor = _editor;
+	}
+}
