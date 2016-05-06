@@ -102,7 +102,6 @@ public class MotionEditor : Editor {
 	public MotionControl motionControl;
 	public _LevelData levelData;
 	public string test;
-	public int active_index;
 	public bool loop;
 	public bool reset;
 
@@ -110,6 +109,7 @@ public class MotionEditor : Editor {
 		string path = "Assets/Resources/_LevelData.asset";
 		levelData = (_LevelData)AssetDatabase.LoadAssetAtPath(path, typeof(_LevelData));
 		levelData.Initialize();
+
 		motionControl = (MotionControl)target;
 	}
 
@@ -138,13 +138,13 @@ public class MotionEditor : Editor {
 			if (levelData.active_index != i) {
 				if(GUILayout.Button("Play", GUILayout.Width(50))) {
 					motionControl.Move(levelData.Motions()[i]);
-					levelData.active_index = i;
+					levelData.SetActive(i);
 				}
 			}
 			else {
 				if(GUILayout.Button("Stop", GUILayout.Width(50))) {
 					motionControl.Stop();
-					levelData.active_index = -1;
+					levelData.SetActive(-1);
 				}
 			}
 			if(GUILayout.Button("Trim", GUILayout.Width(50))) {
@@ -182,11 +182,6 @@ public class MotionBuilder : EditorWindow {
 	}
 
 	void Update() {
-
-		/*(if (!EditorApplication.isPlaying) {
-			Debug.Log("running");
-			Close();
-		}*/
 
 		// Record the frames of motion
 		if (isRecording) {
@@ -243,7 +238,7 @@ public class MotionBuilder : EditorWindow {
 // Motion Trimmer Window
 public class MotionTrimmer : EditorWindow {
 
-	/*MotionEditor editor;
+	MotionEditor editor;
 	_LevelData levelData;
 
 	Orientation startingOrientation;
@@ -307,7 +302,7 @@ public class MotionTrimmer : EditorWindow {
 			editor.motionControl.Stop();
 			this.Close();
 		}
-	}*/
+	}
 
 	public static void Show(MotionEditor _editor) {
 		MotionBuilder window = (MotionBuilder)EditorWindow.GetWindow(typeof(MotionBuilder));

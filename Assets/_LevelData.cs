@@ -16,17 +16,25 @@ public class _LevelData : ScriptableObject {
 	}
 
 	public void Initialize() {
-		active_index = -1;
 		if (motions == null) {
+			active_index = -1;
 			motions = new List<Motion>();
 		}
 	}
 
 	public void AddMotion(Motion _motion) {
 		motions.Add(_motion);
+		Save();
+	}
+
+	public void SetActive(int _active_index) {
+		active_index = _active_index;
+		Save();
+	}
+
+	public void Save() {
 		EditorUtility.SetDirty(this);
 		AssetDatabase.SaveAssets();
-		Debug.Log(motions.Count);
 	}
 
 	public List<Motion> Motions() {
