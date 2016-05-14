@@ -12,7 +12,10 @@ public class Move : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-		Debug.Log(tracker.objs["Wand"].x);
-		transform.position = new Vector3(1000 * tracker.objs["Wand"].x, 1000 * tracker.objs["Wand"].y, 1000 * tracker.objs["Wand"].z);
+		if (tracker.objs.ContainsKey("Wand")) {
+			Tracker_Obj wand = tracker.objs["Wand"];
+			//transform.position = new Vector3(10 * wand.x, 10 * wand.y, 10 * wand.z);
+			//transform.rotation = Quaternion.Euler(wand.h, wand.p, wand.r);
+		}
 	}
 }
